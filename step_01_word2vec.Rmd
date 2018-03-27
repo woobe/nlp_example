@@ -1,0 +1,282 @@
+---
+title: "H2O NLP Demo"
+author: "Jo-fai (Joe) Chow"
+date: "3/27/2018"
+output: 
+  html_document: 
+    df_print: kable
+    fig_height: 7
+    fig_width: 14
+    highlight: tango
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+  html_notebook: 
+    fig_height: 7
+    fig_width: 14
+    highlight: tango
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<br>
+
+# Libraries
+
+```{r}
+suppressPackageStartupMessages(library(h2o))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(caret))
+```
+
+<br>
+
+# Raw Data
+
+```{r}
+# Import CSV (note: link in email)
+d_text = fread("./model_data_no_embeddings.csv", encoding = "Latin-1")
+```
+
+```{r}
+# Look at genre
+table(d_text$genre)
+```
+
+```{r}
+# Look at one sample
+d_text[1:2,]
+```
+
+<br>
+
+
+# Basic Text Cleaning
+
+**Note**: It is important to remove `\n` -- it appears to cause a parsing error when converting to an `H2OFrame`
+
+<br>
+
+## Convert Text to Lower Case
+
+```{r}
+# lower case
+d_text[, title := tolower(title)]
+d_text[, plot := tolower(plot)]
+d_text[1:2,]
+```
+
+<br>
+
+## Remove Special Characters
+
+**Reference**: https://stackoverflow.com/questions/10294284/remove-all-special-characters-from-a-string-in-r
+
+```{r}
+d_text[, title := str_replace_all(title, "[[:punct:]]", "")]
+d_text[, plot := str_replace_all(plot, "[[:punct:]]", "")]
+d_text[1:2,]
+```
+
+<br>
+
+## Split Data into Training/Test
+
+```{r}
+set.seed(54321)
+row_train = createDataPartition(y = d_text$genre, p = 0.9, list = FALSE)
+d_train = d_text[row_train, ]
+d_test = d_text[-row_train, ]
+```
+
+<br>
+
+```{r}
+# Look at genre in d_train
+table(d_train$genre)
+```
+
+```{r}
+# Look at genre in d_test
+table(d_test$genre)
+```
+
+<br>
+
+# Using H2O Word2Vec to Transform Words to Vectors
+
+
+## Start H2O
+
+```{r}
+h2o.init(nthreads = -1, max_mem_size = "8g")
+h2o.removeAll() # clean up
+h2o.no_progress() # disable progress bar
+```
+
+<br>
+
+## H2OFrame
+
+```{r}
+h_train = as.h2o(d_train, destination_frame = "h_train")
+h_test = as.h2o(d_test, destination_frame = "h_test")
+```
+
+<br>
+
+
+## Define Stop Words
+
+```{r}
+stop_words =
+  c("ax","i","you","edu","s","t","m","subject","can","lines","re","what",
+    "there","all","we","one","the","a","an","of","or","in","for","by","on",
+    "but","is","in","a","not","with","as","was","if","they","are","this","and",
+    "it","have", "from","at","my","be","by","not","that","to","from","com",
+    "org","like","likes","so", "hashtag")
+```
+
+<br>
+
+
+## A Helper Function to Tokenize Text
+
+```{r}
+tokenize_helper = function(text, stop_words) {
+  
+  # Main H2O Tokenize function
+  h_words = h2o.tokenize(text, split = "\\\\W+")
+  
+  #  Remove Short Words (< 2 Characters)
+  h_words_length = h2o.nchar(h_words)
+  h_words = h_words[is.na(h_words_length) || h_words_length >= 2,]
+  
+  # Remove Words that Contain Numbers
+  h_words = h_words[h2o.grep("[0-9]", h_words, invert = TRUE, output.logical = TRUE),]
+  
+  # Remove Stop Words
+  h_words = h_words[is.na(h_words) || (! h_words %in% stop_words), ]
+  
+  # Return
+  return(h_words)
+  
+}
+```
+
+<br>
+
+## Tokenize 
+
+```{r}
+h_words = tokenize_helper(h_train$plot, stop_words)
+head(h_words)
+dim(h_words)
+```
+
+<br>
+
+
+## Build Word2Vec Model
+
+### Quick Run
+
+**Notes**: Results are not great.
+
+
+```{r}
+model_w2v_quick = 
+  h2o.word2vec(training_frame = h_words,
+               model_id = "model_quick",
+               min_word_freq = 5,
+               word_model = "SkipGram",
+               norm_model = "HSM",
+               vec_size = 10,
+               window_size = 5,
+               sent_sample_rate = 0.001,
+               init_learning_rate = 0.025,
+               epochs = 1,
+               max_runtime_secs = 60)
+```
+
+```{r}
+# Sanity check - find synonyms for a few common words
+print(h2o.findSynonyms(model_w2v_quick, "king", count = 5))
+print(h2o.findSynonyms(model_w2v_quick, "water", count = 5))
+```
+
+<br>
+
+### Normal Run
+
+**Notes**: Results are ok but it takes a few minutes to train.
+
+```{r}
+model_w2v_normal =
+  h2o.word2vec(training_frame = h_words,
+               model_id = "model_normal",
+               min_word_freq = 5,
+               word_model = "SkipGram",
+               norm_model = "HSM",
+               vec_size = 100,
+               window_size = 5,
+               sent_sample_rate = 0.001,
+               init_learning_rate = 0.025,
+               epochs = 5,
+               max_runtime_secs = 600)
+```
+
+```{r}
+# Sanity check - find synonyms for a few common words
+print(h2o.findSynonyms(model_w2v_normal, "king", count = 5))
+print(h2o.findSynonyms(model_w2v_normal, "water", count = 5))
+```
+
+<br>
+
+### Using a Pre-trained Model from Internet
+
+**Reference**: 
+
+- https://nlp.stanford.edu/projects/glove/
+- https://stackoverflow.com/questions/42982176/does-or-will-h2o-provide-any-pretrained-vectors-for-use-with-h2o-word2vec
+
+**Notes**: Results are great.
+
+<br>
+
+```{r}
+# Download this from http://nlp.stanford.edu/data/glove.6B.zip
+h_pretrained = h2o.importFile("./glove.6B.300d.txt")
+```
+
+```{r}
+model_w2v_pretrained =
+  h2o.word2vec(pre_trained = h_pretrained,
+               model_id = "model_pretrained",
+               vec_size = 300)
+```
+  
+```{r}
+# Sanity check - find synonyms for a few common words
+print(h2o.findSynonyms(model_w2v_pretrained, "king", count = 5))
+print(h2o.findSynonyms(model_w2v_pretrained, "water", count = 5))
+```
+
+<br>
+
+## Save Word2Vec Models for Next Step
+
+```{r}
+h2o.saveModel(model_w2v_quick, path = "./", force = TRUE)
+h2o.saveModel(model_w2v_normal, path = "./", force = TRUE)
+h2o.saveModel(model_w2v_pretrained, path = "./", force = TRUE)
+```
