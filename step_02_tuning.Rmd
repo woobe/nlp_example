@@ -1,0 +1,424 @@
+---
+title: "H2O NLP Demo - Step 2: Tuning"
+author: "Jo-fai (Joe) Chow"
+date: "28/03/2018"
+output: 
+  html_document: 
+    df_print: kable
+    fig_height: 7
+    fig_width: 14
+    highlight: tango
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+  html_notebook: 
+    fig_height: 7
+    fig_width: 14
+    highlight: tango
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<br>
+
+# Training H2O Models for Classification
+
+## Start H2O
+
+```{r}
+suppressPackageStartupMessages(library(h2o))
+h2o.init(nthreads = -1, max_mem_size = "8g")
+h2o.removeAll() # clean up
+h2o.no_progress() # disable progress bar
+n_seed = 54321
+```
+
+<br>
+
+## H2OFrame (using Munged Data from Previous Step)
+
+```{r}
+# Import CSV from previous step
+h_train = h2o.importFile("./train.csv", destination_frame = "h_train")
+h_test = h2o.importFile("./test.csv", destination_frame = "h_test")
+```
+
+```{r}
+# Convert 'genre' to categorical values
+h_train$genre = as.factor(h_train$genre)
+h_test$genre = as.factor(h_test$genre)
+```
+
+<br>
+
+## Define Features (Predictors)
+
+```{r}
+features = setdiff(colnames(h_train), c("id", "title", "genre", "plot"))
+features
+```
+
+<br>
+
+## Use a small sample for quick demo (optional)
+
+```{r}
+h_split = h2o.splitFrame(h_train, ratios = 0.1, seed = n_seed)
+h_train_small = h_split[[1]]
+```
+
+
+
+## GLM Baseline Model
+
+```{r}
+model_glm_baseline = h2o.glm(x = features,
+                             y = "genre",
+                             training_frame = h_train_small,
+                             model_id = "glm_baseline",
+                             family = "multinomial",
+                             seed = n_seed)
+```
+
+<br>
+
+```{r}
+# Evaluate performance on h_test
+perf_glm_baseline = h2o.performance(model_glm_baseline, newdata = h_test)
+h2o.confusionMatrix(perf_glm_baseline)
+```
+
+<br>
+
+```{r}
+# Saving metrics for comparison
+d_perf = 
+  data.frame(algo = "glm_baseline",
+             logloss = h2o.logloss(perf_glm_baseline),
+             mean_per_class_error = h2o.mean_per_class_error(perf_glm_baseline),
+             overall_error = perf_glm_baseline@metrics$cm$table$Error[11])
+d_perf
+```
+
+<br>
+
+## Hyperparameter Tuning using Grid Search
+
+
+```{r}
+# Define the criteria for grid search
+# Full grid search - use strategy = "Cartesian"
+# Random grid search - use strategy = "RandomDiscrete"
+search_criteria = list(strategy = "RandomDiscrete", 
+                       max_models = 5,
+                       seed = n_seed)
+```
+
+<br>
+
+
+### Gradient Boosting Machine (GBM) Grid Search
+
+```{r}
+# Define the range of hyper-parameters for grid search
+# Ref: https://datascience.stackexchange.com/questions/9364/hypertuning-xgboost-parameters
+# Ref: https://i.stack.imgur.com/9GgQK.jpg
+hyper_params_gbm = list(
+    sample_rate = c(0.5, 0.75, 1),
+    col_sample_rate = c(0.4, 0.6, 0.8, 1),
+    max_depth = c(4, 6, 8, 10)
+)
+```
+
+<br>
+
+```{r}
+# Set up grid search
+gbm_rand_grid = h2o.grid(
+  
+    # Core parameters for model training
+    x = features,
+    y = "genre",
+    training_frame = h_train_small,
+    ntrees = 500,
+    nfolds = 3,
+    seed = n_seed,
+    learn_rate = 0.05, # this is important
+
+    # Parameters for grid search
+    grid_id = "gbm_rand_grid",
+    hyper_params = hyper_params_gbm,
+    algorithm = "gbm",
+    search_criteria = search_criteria,
+
+    # Parameters for early stopping
+    stopping_metric = "logloss",
+    stopping_rounds = 3,
+    score_tree_interval = 5
+  
+)
+```
+
+<br>
+
+```{r}
+# Sort and show the grid search results
+gbm_rand_grid = h2o.getGrid(grid_id = "gbm_rand_grid", sort_by = "logloss", decreasing = FALSE)
+print(gbm_rand_grid)
+```
+
+<br>
+
+```{r}
+# Extract the best model
+model_gbm <- h2o.getModel(gbm_rand_grid@model_ids[[1]]) # top of the list
+```
+
+<br>
+
+```{r}
+# Evaluate performance on h_test
+perf_gbm = h2o.performance(model_gbm, newdata = h_test)
+h2o.confusionMatrix(perf_gbm)
+```
+
+<br>
+
+```{r}
+# Saving metrics for comparison
+d_perf_tmp = 
+  data.frame(algo = "gbm_from_grid_search",
+             logloss = h2o.logloss(perf_gbm),
+             mean_per_class_error = h2o.mean_per_class_error(perf_gbm),
+             overall_error = perf_gbm@metrics$cm$table$Error[11])
+d_perf = rbind(d_perf, d_perf_tmp)
+d_perf
+```
+
+<br>
+
+### Deep Neural Network (DNN) Grid Search
+
+```{r}
+# define the range of hyper-parameters for DNN grid search
+hyper_params_dnn <- list(
+    activation = c('Rectifier', 'RectifierWithDropout',
+                   # 'Tanh', 'TanhWithDropout',
+                   'Maxout', 'MaxoutWithDropout'),
+    hidden = list(c(20), c(20,20), c(20,20,20)),
+    l1 = c(0, 1e-3, 1e-5),
+    l2 = c(0, 1e-3, 1e-5)
+)
+```
+
+<br>
+
+```{r}
+# Set up DNN grid search
+# Add a seed for reproducibility
+dnn_rand_grid <- h2o.grid(
+  
+    # Core parameters for model training
+    x = features,
+    y = "genre",
+    training_frame = h_train,
+    epochs = 3,
+    nfolds = 3,
+    seed = n_seed,
+
+    # Parameters for grid search
+    grid_id = "dnn_rand_grid",
+    hyper_params = hyper_params_dnn,
+    algorithm = "deeplearning",
+    search_criteria = search_criteria
+  
+)
+
+
+```
+
+<br>
+
+
+```{r}
+# Sort and show the grid search results
+dnn_rand_grid = h2o.getGrid(grid_id = "dnn_rand_grid", sort_by = "logloss", decreasing = FALSE)
+print(dnn_rand_grid)
+```
+
+<br>
+
+```{r}
+# Extract the best model
+model_dnn <- h2o.getModel(dnn_rand_grid@model_ids[[1]]) # top of the list
+```
+
+<br>
+
+
+```{r}
+# Evaluate performance on h_test
+perf_dnn = h2o.performance(model_dnn, newdata = h_test)
+h2o.confusionMatrix(perf_dnn)
+```
+
+<br>
+
+```{r}
+# Saving metrics for comparison
+d_perf_tmp = 
+  data.frame(algo = "dnn_from_grid_search",
+             logloss = h2o.logloss(perf_dnn),
+             mean_per_class_error = h2o.mean_per_class_error(perf_dnn),
+             overall_error = perf_dnn@metrics$cm$table$Error[11])
+d_perf = rbind(d_perf, d_perf_tmp)
+d_perf
+```
+
+<br>
+
+
+
+### Distributed Random Forest (DRF) Grid Search (NOT RUN)
+
+**Notes**: Excluded (not fast enough for a quick demo)
+
+```{r}
+# Define the range of hyper-parameters for grid search
+hyper_params_drf = list(
+    sample_rate = c(0.3, 0.6, 0.9),
+    col_sample_rate_per_tree = c(0.5, 0.75, 1),
+    max_depth = c(10, 20),
+    histogram_type = c("AUTO", "Random")
+)
+```
+
+<br>
+
+```{r, eval=FALSE}
+# Set up DRF grid search
+# Add a seed for reproducibility
+drf_rand_grid = h2o.grid(
+  
+    # Core parameters for model training
+    x = features,
+    y = "genre",
+    training_frame = h_train,
+    ntrees = 100,
+    nfolds = 3,
+    seed = n_seed,
+
+    # Parameters for grid search
+    grid_id = "drf_rand_grid",
+    hyper_params = hyper_params_drf,
+    algorithm = "randomForest",
+    search_criteria = search_criteria
+  
+)
+```
+
+<br>
+
+
+## Automatic Hyperparameter Tuning & Model Stacking using AutoML
+
+```{r}
+automl = h2o.automl(x = features,
+                    y = "genre",
+                    training_frame = h_train_small,
+                    max_runtime_secs = 1800, # set time limit
+                    max_models = 50,         # or max models
+                    nfolds = 3,
+                    stopping_metric = "logloss",
+                    stopping_rounds = 3,
+                    exclude_algos = c("DRF"), # exclude DRF for quick demo
+                    project_name = "my_automl",
+                    seed = n_seed)
+```
+
+<br>
+
+```{r}
+# Leaderboard
+automl@leaderboard
+```
+
+<br>
+
+```{r}
+# Extract the best model
+model_automl = automl@leader
+```
+
+<br>
+
+```{r}
+# Evaluate performance on h_test
+perf_automl = h2o.performance(model_automl, newdata = h_test)
+h2o.confusionMatrix(perf_automl)
+```
+
+<br>
+
+```{r}
+# Saving metrics for comparison
+d_perf_tmp = 
+  data.frame(algo = "automl_leader",
+             logloss = h2o.logloss(perf_automl),
+             mean_per_class_error = h2o.mean_per_class_error(perf_automl),
+             overall_error = perf_automl@metrics$cm$table$Error[11])
+d_perf = rbind(d_perf, d_perf_tmp)
+d_perf
+```
+
+<br>
+
+
+
+## Making Predictions (Native H2O)
+
+```{r}
+yhat_test = h2o.predict(model_automl, newdata = h_test)
+head(yhat_test)
+```
+
+
+<br>
+
+
+## Saving Models 
+
+```{r}
+# Binary Models
+if (!dir.exists("h2o_model")) dir.create("h2o_model")
+h2o.saveModel(model_gbm, path = "./h2o_model/", force = TRUE)
+h2o.saveModel(model_dnn, path = "./h2o_model/", force = TRUE)
+h2o.saveModel(model_automl, path = "./h2o_model/", force = TRUE)
+```
+
+<br>
+
+```{r}
+# Download MOJO
+if (!dir.exists("mojo")) dir.create("mojo")
+
+h2o.download_mojo(model_gbm, path = "./mojo/", 
+                  get_genmodel_jar = TRUE,
+                  genmodel_name = "genmodel_gbm.jar")
+
+h2o.download_mojo(model_dnn, path = "./mojo/", 
+                  get_genmodel_jar = TRUE,
+                  genmodel_name = "genmodel_dnn.jar")
+
+h2o.download_mojo(model_automl, path = "./mojo/", 
+                  get_genmodel_jar = TRUE,
+                  genmodel_name = "genmodel_automl.jar")
+```
+
