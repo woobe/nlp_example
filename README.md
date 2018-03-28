@@ -10,8 +10,8 @@
 
 # Step-by-step
 
-1. `step_01_word2vec` 
-2. `step_02_tuning`
+1. `step_01_word2vec` [Notebook Viewer Link](https://nbviewer.jupyter.org/github/woobe/nlp_example/blob/master/step_01_word2vec.html)
+2. `step_02_tuning` [Notebook Viewer Link](https://nbviewer.jupyter.org/github/woobe/nlp_example/blob/master/step_02_tuning.html)
 3. For pipeline, see `HamOrSpamMojo.ipynb` and this webinar (https://www.youtube.com/watch?v=jpzi0-1mKyA)
 
 
