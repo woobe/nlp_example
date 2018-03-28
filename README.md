@@ -11,6 +11,8 @@
 # Step-by-step
 
 1. `step_01_word2vec` 
-2. `step_02_transform`
-3. `step_03_tuning`
-4. `step_04_scoring`
+2. `step_02_tuning`
+3. For pipeline, see `HamOrSpamMojo.ipynb` and this webinar (https://www.youtube.com/watch?v=jpzi0-1mKyA)
+
+
+
