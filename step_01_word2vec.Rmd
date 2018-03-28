@@ -268,9 +268,10 @@ print(h2o.findSynonyms(model_w2v_pretrained, "water", count = 5))
 ## Save Word2Vec Models (for Transformation in the Future)
 
 ```{r}
-h2o.saveModel(model_w2v_quick, path = "./", force = TRUE)
-h2o.saveModel(model_w2v_normal, path = "./", force = TRUE)
-h2o.saveModel(model_w2v_pretrained, path = "./", force = TRUE)
+if (!dir.exists("w2v_model")) dir.create("w2v_model")
+h2o.saveModel(model_w2v_quick, path = "./w2v_model/", force = TRUE)
+h2o.saveModel(model_w2v_normal, path = "./w2v_model/", force = TRUE)
+h2o.saveModel(model_w2v_pretrained, path = "./w2v_model/", force = TRUE)
 ```
 
 <br>

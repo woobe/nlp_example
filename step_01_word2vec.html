@@ -281,14 +281,14 @@ d_test =<span class="st"> </span>d_text[<span class="op">-</span>row_train, ]</c
 ## H2O is not running yet, starting it now...
 ## 
 ## Note:  In case of errors look at the following log files:
-##     /var/folders/4z/p7yt7_4n4fj1jlyq6g4qhfbw0000gn/T//RtmpyjOH2F/h2o_jofaichow_started_from_r.out
-##     /var/folders/4z/p7yt7_4n4fj1jlyq6g4qhfbw0000gn/T//RtmpyjOH2F/h2o_jofaichow_started_from_r.err
+##     /var/folders/4z/p7yt7_4n4fj1jlyq6g4qhfbw0000gn/T//Rtmpef8R96/h2o_jofaichow_started_from_r.out
+##     /var/folders/4z/p7yt7_4n4fj1jlyq6g4qhfbw0000gn/T//Rtmpef8R96/h2o_jofaichow_started_from_r.err
 ## 
 ## 
-## Starting H2O JVM and connecting: ...... Connection successful!
+## Starting H2O JVM and connecting: ... Connection successful!
 ## 
 ## R is connected to the H2O cluster: 
-##     H2O cluster uptime:         5 seconds 678 milliseconds 
+##     H2O cluster uptime:         2 seconds 563 milliseconds 
 ##     H2O cluster timezone:       Europe/London 
 ##     H2O data parsing timezone:  UTC 
 ##     H2O cluster version:        3.18.0.4 
@@ -408,19 +408,19 @@ h_test =<span class="st"> </span><span class="kw">as.h2o</span>(d_test, <span cl
                <span class="dt">max_runtime_secs =</span> <span class="dv">60</span>)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Sanity check - find synonyms for a few common words</span>
 <span class="kw">print</span>(<span class="kw">h2o.findSynonyms</span>(model_w2v_quick, <span class="st">&quot;king&quot;</span>, <span class="dt">count =</span> <span class="dv">5</span>))</code></pre></div>
-<pre><code>##   synonym     score
-## 1  ludwig 0.9536915
-## 2    doss 0.9425673
-## 3    lone 0.9395784
-## 4 wilfred 0.9350504
-## 5  prince 0.9311960</code></pre>
+<pre><code>##         synonym     score
+## 1           iii 0.9643211
+## 2 assassination 0.9584719
+## 3         ihrem 0.9517017
+## 4      napoleon 0.9481472
+## 5       fighter 0.9345600</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">print</span>(<span class="kw">h2o.findSynonyms</span>(model_w2v_quick, <span class="st">&quot;water&quot;</span>, <span class="dt">count =</span> <span class="dv">5</span>))</code></pre></div>
 <pre><code>##    synonym     score
-## 1 flooding 0.9402234
-## 2    trees 0.9397603
-## 3   ground 0.9372432
-## 4     land 0.9350773
-## 5    haven 0.9314018</code></pre>
+## 1  flooded 0.9519013
+## 2  weather 0.9490833
+## 3 flooding 0.9358426
+## 4    haven 0.9348411
+## 5    doors 0.9306415</code></pre>
 <p><br></p>
 </div>
 <div id="normal-run" class="section level3">
@@ -440,19 +440,19 @@ h_test =<span class="st"> </span><span class="kw">as.h2o</span>(d_test, <span cl
                <span class="dt">max_runtime_secs =</span> <span class="dv">600</span>)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Sanity check - find synonyms for a few common words</span>
 <span class="kw">print</span>(<span class="kw">h2o.findSynonyms</span>(model_w2v_normal, <span class="st">&quot;king&quot;</span>, <span class="dt">count =</span> <span class="dv">5</span>))</code></pre></div>
-<pre><code>##     synonym     score
-## 1    prince 0.7559378
-## 2 guinevere 0.7281814
-## 3     queen 0.7262982
-## 4     herod 0.7216204
-## 5    throne 0.7200903</code></pre>
+<pre><code>##   synonym     score
+## 1   herod 0.7791280
+## 2  throne 0.7427880
+## 3  prince 0.7409751
+## 4   queen 0.7290230
+## 5   kings 0.7287537</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">print</span>(<span class="kw">h2o.findSynonyms</span>(model_w2v_normal, <span class="st">&quot;water&quot;</span>, <span class="dt">count =</span> <span class="dv">5</span>))</code></pre></div>
 <pre><code>##       synonym     score
-## 1        fish 0.7307606
-## 2    polluted 0.7279576
-## 3 electricity 0.7119790
-## 4      oxygen 0.7009311
-## 5       crabs 0.6933300</code></pre>
+## 1 electricity 0.7504765
+## 2    polluted 0.7416074
+## 3      supply 0.7237563
+## 4    scarcity 0.7168975
+## 5        fish 0.7049398</code></pre>
 <p><br></p>
 </div>
 <div id="using-a-pre-trained-model-from-internet" class="section level3">
@@ -466,7 +466,7 @@ h_test =<span class="st"> </span><span class="kw">as.h2o</span>(d_test, <span cl
 <p><br></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Download this from http://nlp.stanford.edu/data/glove.6B.zip</span>
 h_pretrained =<span class="st"> </span><span class="kw">h2o.importFile</span>(<span class="st">&quot;./glove.6B.300d.txt&quot;</span>)</code></pre></div>
-<pre><code>## WARNING: [Lwater.parser.ParseWriter$ParseErr;@6229b3e7</code></pre>
+<pre><code>## WARNING: [Lwater.parser.ParseWriter$ParseErr;@1691673b</code></pre>
 <pre><code>## Warning in doTryCatch(return(expr), name, parentenv, handler): ParseError
 ## at file /Users/jofaichow/Documents/repo_h2o/nlp_example/./glove.6B.300d.txt
 ## at byte offset 23513; error = 'Unmatched quote char &quot;'</code></pre>
@@ -494,12 +494,13 @@ h_pretrained =<span class="st"> </span><span class="kw">h2o.importFile</span>(<s
 </div>
 <div id="save-word2vec-models-for-transformation-in-the-future" class="section level2">
 <h2><span class="header-section-number">4.7</span> Save Word2Vec Models (for Transformation in the Future)</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">h2o.saveModel</span>(model_w2v_quick, <span class="dt">path =</span> <span class="st">&quot;./&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
-<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/model_quick&quot;</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">h2o.saveModel</span>(model_w2v_normal, <span class="dt">path =</span> <span class="st">&quot;./&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
-<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/model_normal&quot;</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">h2o.saveModel</span>(model_w2v_pretrained, <span class="dt">path =</span> <span class="st">&quot;./&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
-<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/model_pretrained&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="cf">if</span> (<span class="op">!</span><span class="kw">dir.exists</span>(<span class="st">&quot;w2v_model&quot;</span>)) <span class="kw">dir.create</span>(<span class="st">&quot;w2v_model&quot;</span>)
+<span class="kw">h2o.saveModel</span>(model_w2v_quick, <span class="dt">path =</span> <span class="st">&quot;./w2v_model/&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/w2v_model/model_quick&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">h2o.saveModel</span>(model_w2v_normal, <span class="dt">path =</span> <span class="st">&quot;./w2v_model/&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/w2v_model/model_normal&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">h2o.saveModel</span>(model_w2v_pretrained, <span class="dt">path =</span> <span class="st">&quot;./w2v_model/&quot;</span>, <span class="dt">force =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## [1] &quot;/Users/jofaichow/Documents/repo_h2o/nlp_example/w2v_model/model_pretrained&quot;</code></pre>
 <p><br></p>
 </div>
 <div id="using-word2vec-model" class="section level2">
