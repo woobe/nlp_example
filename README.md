@@ -1,6 +1,6 @@
 # NLP Example
 
-1. Download `model_data_no_embeddings.csv` from Google Drive (see email)
+1. Download `model_data_no_embeddings.csv` from Google Drive (https://drive.google.com/open?id=1S82kwItle1HJ3gL3iYOP-gNdVTWGImQz)
 
 2. Download http://nlp.stanford.edu/data/glove.6B.zip (we are using one of text files `glove.6B.300d.txt` in this zip)
 
